@@ -1,0 +1,112 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "query-filter/order",
+	"version": "0.1.0",
+	"title": "Query Order Filter",
+	"category": "theme",
+	"icon": "sort",
+	"description": "Allows users to order items when placed within a query loop block",
+	"ancestor": [ "core/query" ],
+	"usesContext": [ "queryId", "query" ],
+	"attributes": {
+		"orderOptions": {
+			"type": "array",
+			"default": [
+				{
+					"label": "Newest",
+					"slug": "newest",
+					"value": { "orderby": "date", "order": "desc" }
+				},
+				{
+					"label": "Oldest",
+					"slug": "oldest",
+					"value": { "orderby": "date", "order": "asc" }
+				},
+				{
+					"label": "Alphabetical A-Z",
+					"slug": "alphabetical-a-z",
+					"value": { "orderby": "title", "order": "asc" }
+				},
+				{
+					"label": "Alphabetical Z-A",
+					"slug": "alphabetical-z-a",
+					"value": { "orderby": "title", "order": "desc" }
+				},
+				{
+					"label": "Random",
+					"slug": "random",
+					"value": { "orderby": "rand", "order": "" }
+				}
+			]
+		},
+		"label": {
+			"type": "string"
+		},
+		"showLabel": {
+			"type": "boolean",
+			"default": true
+		},
+		"labelNewest": {
+			"type": "string",
+			"default": "Newest"
+		},
+		"labelOldest": {
+			"type": "string",
+			"default": "Oldest"
+		},
+		"labelTitleAsc": {
+			"type": "string",
+			"default": "Alphabetical A-Z"
+		},
+		"labelTitleDesc": {
+			"type": "string",
+			"default": "Alphabetical Z-A"
+		},
+		"labelRandom": {
+			"type": "string",
+			"default": "Random"
+		},
+		"defaultOption": {
+			"type": "string",
+			"default": "newest",
+			"description": "The default order option"
+		}
+	},
+	"supports": {
+		"html": false,
+		"className": true,
+		"customClassName": true,
+		"color": {
+			"background": true,
+			"text": true
+		},
+		"typography": {
+			"fontSize": true,
+			"textAlign": true,
+			"lineHeight": true,
+			"FontFamily": true,
+			"FontWeight": true,
+			"FontStyle": true,
+			"TextTransform": true,
+			"TextDecoration": true,
+			"LetterSpacing": true,
+			"__experimentalDefaultControls": {
+				"fontSize": true
+			}
+		},
+		"spacing": {
+			"margin": true,
+			"padding": true,
+			"blockGap": true
+		},
+		"interactivity": {
+			"clientNavigation": true
+		}
+	},
+	"textdomain": "query-filter",
+	"editorScript": "file:./index.js",
+	"style": "query-filter-view",
+	"viewScriptModule": "file:./view.js",
+	"render": "file:./render.php"
+}

@@ -52,6 +52,7 @@ function action_wp_enqueue_scripts() : void {
 function register_blocks() : void {
 	register_block_type( ROOT_DIR . '/build/taxonomy' );
 	register_block_type( ROOT_DIR . '/build/post-type' );
+	register_block_type( ROOT_DIR . '/build/order' );
 }
 
 /**
@@ -86,7 +87,9 @@ function pre_get_posts_transpose_query_vars( WP_Query $query ) : void {
 	$tax_query = [];
 	$valid_keys = [
 		'post_type' => $query->is_search() ? 'any' : 'post',
-		's' => '',
+		's'         => '',
+		'orderby'   => 'date',
+		'order'     => 'desc',
 	];
 
 	// Preserve valid params for later retrieval.
@@ -100,7 +103,7 @@ function pre_get_posts_transpose_query_vars( WP_Query $query ) : void {
 	// Map get params to this query.
 	foreach ( $_GET as $key => $value ) {
 		if ( strpos( $key, $prefix ) === 0 ) {
-			$key = str_replace( $prefix, '', $key );
+			$key   = str_replace( $prefix, '', $key );
 			$value = sanitize_text_field( urldecode( wp_unslash( $value ) ) );
 
 			// Handle taxonomies specifically.
@@ -115,10 +118,10 @@ function pre_get_posts_transpose_query_vars( WP_Query $query ) : void {
 				);
 
 				$tax_query['relation'] = 'AND';
-				$tax_query[] = [
+				$tax_query[]           = [
 					'taxonomy' => $key,
-					'terms' => $value,
-					'field' => 'slug',
+					'terms'    => $value,
+					'field'    => 'slug',
 				];
 			} else {
 				// Other options should map directly to query vars.
