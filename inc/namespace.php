@@ -53,6 +53,7 @@ function register_blocks() : void {
 	register_block_type( ROOT_DIR . '/build/taxonomy' );
 	register_block_type( ROOT_DIR . '/build/post-type' );
 	register_block_type( ROOT_DIR . '/build/order' );
+	register_block_type( ROOT_DIR . '/build/reset' );
 }
 
 /**
