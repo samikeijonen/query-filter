@@ -1,12 +1,12 @@
 {
   "$schema": "https://schemas.wp.org/trunk/block.json",
   "apiVersion": 3,
-  "name": "query-filter/taxonomy",
+  "name": "query-filter/reset",
   "version": "0.1.0",
-  "title": "Taxonomy Filter",
+  "title": "Query Reset Filter",
   "category": "theme",
-  "icon": "filter",
-  "description": "Allows users to filter by taxonomy terms when placed wihin a query loop block",
+  "icon": "remove",
+  "description": "Allows users to reset filters when placed within a query loop block",
   "ancestor": [
     "core/query"
   ],
@@ -14,17 +14,33 @@
     "queryId",
     "query"
   ],
+  "attributes": {
+    "label": {
+      "type": "string",
+      "default": "Reset filters"
+    }
+  },
   "supports": {
     "html": false,
     "className": true,
     "customClassName": true,
     "color": {
+      "gradients": true,
       "background": true,
       "text": true
     },
     "typography": {
+      "__experimentalSkipSerialization": [
+        "fontSize",
+        "lineHeight",
+        "fontFamily",
+        "fontWeight",
+        "fontStyle",
+        "textTransform",
+        "textDecoration",
+        "letterSpacing"
+      ],
       "fontSize": true,
-      "textAlign": true,
       "lineHeight": true,
       "__experimentalFontFamily": true,
       "__experimentalFontWeight": true,
@@ -32,37 +48,34 @@
       "__experimentalTextTransform": true,
       "__experimentalTextDecoration": true,
       "__experimentalLetterSpacing": true,
+      "__experimentalWritingMode": true,
       "__experimentalDefaultControls": {
         "fontSize": true
       }
     },
+    "reusable": false,
+    "shadow": {
+      "__experimentalSkipSerialization": true
+    },
+    "__experimentalBorder": {
+      "color": true,
+      "radius": true,
+      "style": true,
+      "width": true,
+      "__experimentalSkipSerialization": true,
+      "__experimentalDefaultControls": {
+        "color": true,
+        "radius": true,
+        "style": true,
+        "width": true
+      }
+    },
     "spacing": {
       "margin": true,
-      "padding": true,
-      "blockGap": true
+      "padding": true
     },
     "interactivity": {
       "clientNavigation": true
-    }
-  },
-  "attributes": {
-    "taxonomy": {
-      "type": "string"
-    },
-    "emptyLabel": {
-      "type": "string",
-      "default": ""
-    },
-    "label": {
-      "type": "string"
-    },
-    "showLabel": {
-      "type": "boolean",
-      "default": true
-    },
-    "useCheckboxes": {
-      "type": "boolean",
-      "default": false
     }
   },
   "textdomain": "query-filter",

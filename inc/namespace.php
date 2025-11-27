@@ -52,6 +52,8 @@ function action_wp_enqueue_scripts() : void {
 function register_blocks() : void {
 	register_block_type( ROOT_DIR . '/build/taxonomy' );
 	register_block_type( ROOT_DIR . '/build/post-type' );
+	register_block_type( ROOT_DIR . '/build/reset' );
+	register_block_type( ROOT_DIR . '/build/order' );
 }
 
 /**
@@ -86,7 +88,9 @@ function pre_get_posts_transpose_query_vars( WP_Query $query ) : void {
 	$tax_query = [];
 	$valid_keys = [
 		'post_type' => $query->is_search() ? 'any' : 'post',
-		's' => '',
+		's'         => '',
+		'orderby'   => 'date',
+		'order'     => 'desc',
 	];
 
 	// Preserve valid params for later retrieval.
@@ -105,10 +109,18 @@ function pre_get_posts_transpose_query_vars( WP_Query $query ) : void {
 
 			// Handle taxonomies specifically.
 			if ( get_taxonomy( $key ) ) {
+				// Allow multiple values by using array format for taxonomies.
+				$value = array_map(
+					'sanitize_text_field',
+					array_map(
+						'urldecode',
+						explode( ',', wp_unslash( $value ) ) // Split by commas
+					)
+				);
 				$tax_query['relation'] = 'AND';
 				$tax_query[] = [
 					'taxonomy' => $key,
-					'terms' => [ $value ],
+					'terms' => $value,
 					'field' => 'slug',
 				];
 			} else {
@@ -176,6 +188,11 @@ function render_block_search( string $block_content, array $block, \WP_Block $in
 		? sprintf( 'query-%d-s', $instance->context['queryId'] ?? 0 )
 		: 's';
 
+	// Add queryId to the context (null when inherited, numeric when scoped).
+	$query_id = empty( $instance->context['query']['inherit'] )
+		? ( $instance->context['queryId'] ?? 0 )
+		: null;
+
 	$action = str_replace( '/page/'. get_query_var( 'paged', 1 ), '', add_query_arg( [ $query_var => '' ] ) );
 
 	// Note sanitize_text_field trims whitespace from start/end of string causing unexpected behaviour.
@@ -194,7 +211,15 @@ function render_block_search( string $block_content, array $block, \WP_Block $in
 	$block_content->set_attribute( 'action', $action );
 	$block_content->set_attribute( 'data-wp-interactive', 'query-filter' );
 	$block_content->set_attribute( 'data-wp-on--submit', 'actions.search' );
-	$block_content->set_attribute( 'data-wp-context', '{searchValue:""}' );
+	$block_content->set_attribute(
+		'data-wp-context',
+		wp_json_encode(
+			[
+				'queryId'     => $query_id,
+				'searchValue' => '',
+			]
+		)
+	);
 	$block_content->next_tag( [ 'tag_name' => 'input', 'class_name' => 'wp-block-search__input' ] );
 	$block_content->set_attribute( 'name', $query_var );
 	$block_content->set_attribute( 'inputmode', 'search' );
