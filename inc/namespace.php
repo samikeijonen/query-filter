@@ -75,7 +75,7 @@ function filter_query_loop_block_query_vars( array $query, \WP_Block $block, int
 /**
  * Fires after the query variable object is created, but before the actual query is run.
  *
- * @param  WP_Query $query The WP_Query instance (passed by reference).
+ * @param WP_Query $query The WP_Query instance (passed by reference).
  */
 function pre_get_posts_transpose_query_vars( WP_Query $query ) : void {
 	$query_id = $query->get( 'query_id', null );
@@ -109,26 +109,41 @@ function pre_get_posts_transpose_query_vars( WP_Query $query ) : void {
 
 			// Handle taxonomies specifically.
 			if ( get_taxonomy( $key ) ) {
-				// Allow multiple values by using array format for taxonomies.
-				$value = array_map(
-					'sanitize_text_field',
-					array_map(
-						'urldecode',
-						explode( ',', wp_unslash( $value ) ) // Split by commas
-					)
-				);
+				// If multiple taxonomy filters are selected, ALL of them must match.
 				$tax_query['relation'] = 'AND';
-				$tax_query[] = [
-					'taxonomy' => $key,
-					'terms' => $value,
-					'field' => 'slug',
-				];
+
+				// Handle multiple values separated by commas (for checkbox mode)
+				$values = wp_parse_list( $value );
+
+				if ( count( $values ) > 1 ) {
+					// If multiple terms in a taxonomy are selected, posts with
+					// ANY of the selected terms should be returned.
+					$tax_query[] = [
+						'taxonomy' => $key,
+						'terms' => $values,
+						'field' => 'slug',
+						'operator' => 'IN',
+					];
+				} else {
+					// Single value: normal behavior
+					$tax_query[] = [
+						'taxonomy' => $key,
+						'terms' => $values,
+						'field' => 'slug',
+					];
+				}
 			} else {
 				// Other options should map directly to query vars.
 				$key = sanitize_key( $key );
 
 				if ( ! in_array( $key, array_keys( $valid_keys ), true ) ) {
 					continue;
+				}
+
+				// post_type accepts multiple comma-separated values in checkbox mode.
+				// Parse as list so WP_Query returns results from any selected post_type.
+				if ( $key === 'post_type' ) {
+					$value = wp_parse_list( $value );
 				}
 
 				$query->set(
@@ -170,6 +185,43 @@ function filter_block_type_metadata( array $metadata ) : array {
 }
 
 /**
+ * Sanitize a search query value.
+ *
+ * sanitize_text_field() trims surrounding whitespace. We want to preserve that
+ * so that the rendered value always matches what a user is typing, such as when
+ * they are typing a space between words. Restore outer whitespace after sanitizing.
+ *
+ * @param string $query_var Name of query var to capture and sanitize.
+ * @return string Sanitized value with leading/trailing whitespace preserved.
+ */
+function sanitize_search_query_var( string $query_var ) : string {
+	if ( ! isset( $_GET[ $query_var ] ) ) {
+		return '';
+	}
+
+	// phpcs:ignore HM.Security.ValidatedSanitizedInput.InputNotSanitized -- Intermediate reference to capture whitespace only, sanitized below.
+	$value = wp_unslash( $_GET[ $query_var ] );
+
+	if ( $value === '' ) {
+		return '';
+	}
+
+	$sanitized = sanitize_text_field( $value );
+
+	// Capture surrounding whitespace.
+	preg_match( '/^\s*/', $value, $leading );
+	preg_match( '/\s*$/', $value, $trailing );
+
+	// If sanitization removed all content, leading and trailing space may be
+	// the same characters. Only return the trailing space, to avoid doubling.
+	if ( $sanitized === '' && ( $leading[0] === $trailing[0] ) ) {
+		return $trailing[0];
+	}
+
+	return $leading[0] . $sanitized . $trailing[0];
+}
+
+/**
  * Filters the content of a single block.
  *
  * @param string    $block_content The block content.
@@ -186,45 +238,24 @@ function render_block_search( string $block_content, array $block, \WP_Block $in
 
 	$query_var = empty( $instance->context['query']['inherit'] )
 		? sprintf( 'query-%d-s', $instance->context['queryId'] ?? 0 )
-		: 's';
+		: 'query-s';
 
-	// Add queryId to the context (null when inherited, numeric when scoped).
-	$query_id = empty( $instance->context['query']['inherit'] )
-		? ( $instance->context['queryId'] ?? 0 )
-		: null;
+	$action = str_replace( '/page/' . get_query_var( 'paged', 1 ), '', add_query_arg( [ $query_var => '' ] ) );
 
-	$action = str_replace( '/page/'. get_query_var( 'paged', 1 ), '', add_query_arg( [ $query_var => '' ] ) );
-
-	// Note sanitize_text_field trims whitespace from start/end of string causing unexpected behaviour.
-	$value = wp_unslash( $_GET[ $query_var ] ?? '' );
-	$value = urldecode( $value );
-	$value = wp_check_invalid_utf8( $value );
-	$value = wp_pre_kses_less_than( $value );
-	$value = strip_tags( $value );
-
-	wp_interactivity_state( 'query-filter', [
-		'searchValue' => $value,
-	] );
+	$search_value = sanitize_search_query_var( $query_var );
 
 	$block_content = new WP_HTML_Tag_Processor( $block_content );
 	$block_content->next_tag( [ 'tag_name' => 'form' ] );
 	$block_content->set_attribute( 'action', $action );
 	$block_content->set_attribute( 'data-wp-interactive', 'query-filter' );
 	$block_content->set_attribute( 'data-wp-on--submit', 'actions.search' );
-	$block_content->set_attribute(
-		'data-wp-context',
-		wp_json_encode(
-			[
-				'queryId'     => $query_id,
-				'searchValue' => '',
-			]
-		)
-	);
+	// Scope search to block context so multiple searchable query loops may coexist.
+	$block_content->set_attribute( 'data-wp-context', wp_json_encode( [ 'searchValue' => $search_value ] ) );
 	$block_content->next_tag( [ 'tag_name' => 'input', 'class_name' => 'wp-block-search__input' ] );
 	$block_content->set_attribute( 'name', $query_var );
 	$block_content->set_attribute( 'inputmode', 'search' );
-	$block_content->set_attribute( 'value', $value );
-	$block_content->set_attribute( 'data-wp-bind--value', 'state.searchValue' );
+	$block_content->set_attribute( 'value', $search_value );
+	$block_content->set_attribute( 'data-wp-bind--value', 'context.searchValue' );
 	$block_content->set_attribute( 'data-wp-on--input', 'actions.search' );
 
 	return (string) $block_content;

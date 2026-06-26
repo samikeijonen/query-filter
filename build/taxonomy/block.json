@@ -60,9 +60,13 @@
       "type": "boolean",
       "default": true
     },
-    "useCheckboxes": {
-      "type": "boolean",
-      "default": false
+    "displayType": {
+      "type": "string",
+      "default": "select"
+    },
+    "layoutDirection": {
+      "type": "string",
+      "default": "vertical"
     }
   },
   "textdomain": "query-filter",
